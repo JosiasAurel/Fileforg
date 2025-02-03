@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node index.js",
-    "install": "npm i fileforg"
+    "install": "npm install"
   },
   "keywords": [
     "NeatFile",
@@ -14,7 +14,7 @@
   ],
   "author": "Njingti Shanelle",
   "license": "ISC",
-  "description": "fileforg is cli that helps organize your files.",
+  "description": "fileforg is a CLI that helps organize your files.",
   "dependencies": {
     "util": "^0.12.5"
   },

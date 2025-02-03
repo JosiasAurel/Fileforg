@@ -1,40 +1,33 @@
 #!/usr/bin/node
-import fs, { existsSync } from "fs";
+import fs from "fs/promises";
 import Path from "path";
-import util from "util";
-import readline from "node:readline"
-import inquirer from "inquirer";
+import readline from "node:readline";
 
 const rl = readline.createInterface({
   input: process.stdin,
-  output: process.stdout
+  output: process.stdout,
 });
 
-const readdir = util.promisify(fs.readdir);
-const mkdir = util.promisify(fs.mkdir);
-const stat = util.promisify(fs.stat);
-
 async function getFileExtensions(dir) {
-  const files = await readdir(dir);
-
+  const files = await fs.readdir(dir);
   const fileTypes = {};
 
   for (const file of files) {
     const filePath = Path.join(dir, file);
 
     try {
-      const stats = await stat(filePath); 
+      const stats = await fs.stat(filePath);
       if (stats.isFile()) {
         const extType = Path.extname(file).toLowerCase() || ".noext";
-        if (stats.isFile()) {
-          if (!fileTypes[extType]) {
-            fileTypes[extType] = [];
-          }
-          fileTypes[extType].push(filePath);
+        if (!fileTypes[extType]) {
+          fileTypes[extType] = [];
         }
+        fileTypes[extType].push(filePath);
       }
-    } catch {
-      console.log(`Skipping ${filePath}... Probably a broken file/symlink`);
+    } catch (err) {
+      console.log(
+        `Skipping ${filePath}... Probably a broken file/symlink: ${err.message}`
+      );
     }
   }
   return fileTypes;
@@ -44,35 +37,39 @@ const createFolderWithExt = async (fileTypes, dir) => {
   for (const [extension, filePaths] of Object.entries(fileTypes)) {
     const newFolder = extension.startsWith(".") ? extension.slice(1) : "noext";
     const newFolderPath = Path.join(dir, newFolder);
-    const folderPath=newFolderPath.split('/').slice(3).join('/')
-    
 
-    // Ensure folder is created
-    if (!existsSync(newFolderPath)) {
-      await mkdir(newFolderPath, { recursive: true });
+    try {
+      await fs.mkdir(newFolderPath, { recursive: true });
+    } catch (err) {
+      console.error(`Error creating folder ${newFolderPath}: ${err.message}`);
+      continue; // Skip to the next extension
     }
 
-    let i = 1;
     for (const file of filePaths) {
       const fileName = Path.basename(file);
-      let newPath = Path.resolve(newFolderPath, fileName);
+      let newPath = Path.join(newFolderPath, fileName);
+      let i = 1;
 
-      // check if file already exists and creates duplicate
-      while (existsSync(newPath)) {
+      while (
+        await fs
+          .access(newPath)
+          .then(() => true)
+          .catch(() => false)
+      ) {
         const ext = Path.extname(fileName);
         const base = Path.basename(fileName, ext);
-        newPath = Path.resolve(newFolderPath, `${base}(${i})${ext}`);
+        newPath = Path.join(newFolderPath, `${base}(${i})${ext}`);
         i++;
       }
 
-      // Move the file
-      fs.rename(file, newPath, (err) => {
-        if (err) {
-          console.error(`Error moving file: ${file} -> ${newPath}`, err);
-        } else {
-          console.log(`${fileName} moved to ${folderPath}`);
-        }
-      });
+      try {
+        await fs.rename(file, newPath);
+        console.log(`${fileName} moved to ${newFolder}`);
+      } catch (err) {
+        console.error(
+          `Error moving file: ${file} -> ${newPath}: ${err.message}`
+        );
+      }
     }
   }
 };
@@ -80,20 +77,15 @@ const createFolderWithExt = async (fileTypes, dir) => {
 const checkFileType = async (dir) => {
   try {
     const fileTypes = await getFileExtensions(dir);
-
     await createFolderWithExt(fileTypes, dir);
   } catch (err) {
-    console.error("Error:", err);
+    console.error("Error:", err.message);
   }
 };
 
 const getFilePathFromUser = async () => {
-  let filepath;
-  return rl.question('Please enter the filepath: ', async userFilepath => {
-    if (userFilepath.trim() == '') filepath = process.cwd();
-    filepath = userFilepath;
-
-    // create the different folder where files are organised
+  rl.question("Please enter the filepath: ", async (userFilepath) => {
+    const filepath = userFilepath.trim() || process.cwd();
     await checkFileType(filepath);
     rl.close();
   });
