@@ -3,7 +3,6 @@ import fs, { existsSync } from "fs";
 import Path from "path";
 import util from "util";
 import readline from "node:readline"
-import inquirer from "inquirer";
 
 const rl = readline.createInterface({
   input: process.stdin,
