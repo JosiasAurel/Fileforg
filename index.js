@@ -1,7 +1,8 @@
 #!/usr/bin/node
 import fs from "fs/promises";
 import Path from "path";
-import readline from "node:readline";
+import util from "util";
+import readline from "node:readline"
 
 const rl = readline.createInterface({
   input: process.stdin,

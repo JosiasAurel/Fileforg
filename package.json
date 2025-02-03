@@ -4,8 +4,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "node index.js",
-    "install": "npm install"
+    "dev": "node index.js"
   },
   "keywords": [
     "NeatFile",
